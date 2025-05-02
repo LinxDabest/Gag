@@ -1,0 +1,26 @@
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+
+-- Collect all Can_Plant parts in the Workspace
+local canPlants = {}
+
+for _, part in ipairs(workspace:GetDescendants()) do
+	if part:IsA("BasePart") and part.Name == "Can_Plant" then
+		part.Transparency = 1 -- Make invisible
+		part.CanCollide = false -- Make non-collidable
+		part.Anchored = true -- Anchor so we can move it manually
+		table.insert(canPlants, part)
+	end
+end
+
+-- Make them follow the player
+game:GetService("RunService").RenderStepped:Connect(function()
+	for index, plant in ipairs(canPlants) do
+		if plant and plant.Parent then
+			local offset = Vector3.new(3 * index, 0, 0) -- Offset each one slightly
+			local newPos = hrp.Position + offset
+			plant.CFrame = CFrame.new(newPos, hrp.Position)
+		end
+	end
+end)
